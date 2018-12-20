@@ -1,0 +1,54 @@
+## ---------docker daemon配置部分-----------
+- name: 准备docker相关目录
+  file: name={{ item }} state=directory
+  with_items:
+  - /etc/docker
+
+# 安装docker
+- name: 安装必要的一些系统工具
+  yum:
+    name:
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+      - bash-completion
+    state: present
+
+- name: 新增加阿里云的源
+  yum_repository:
+    name: epel
+    description: Aliyun Docker YUM repo
+    baseurl: http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+
+- name: 安装docker
+  yum:
+    name:
+      - docker-ce
+
+- name: docker命令自动补全
+  synchronize: src=/usr/share/bash-completion/completions/docker dest=/etc/bash_completion.d/docker mode=0644
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: docker国内镜像加速
+  template: src=daemon.json.j2 dest=/etc/docker/daemon.json
+
+- name: flush-iptables
+  shell: "iptables -F && iptables -X \
+        && iptables -F -t nat && iptables -X -t nat \
+        && iptables -F -t raw && iptables -X -t raw \
+        && iptables -F -t mangle && iptables -X -t mangle"
+
+- name: 创建docker的systemd unit文件
+  template: src=docker.service.j2 dest=/etc/systemd/system/docker.service
+  tags: upgrade_docker, download_docker
+
+- name: 开机启用docker 服务
+  shell: systemctl enable docker
+  ignore_errors: true
+
+- name: 开启docker 服务
+  shell: systemctl daemon-reload && systemctl restart docker
+  tags: upgrade_docker
+
+- name: 查看 docker info
+  shell: docker info

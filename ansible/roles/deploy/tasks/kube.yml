@@ -1,0 +1,13 @@
+---
+- name: 下载 kubernetes
+  get_url:
+    url: https://storage.googleapis.com/kubernetes-release/release/{{ K8S_VER }}/bin/linux/amd64/{{ item }}
+    dest: "{{bin_dir}}/{{item}}"
+    mode: 0755
+  with_items:
+    - kubectl
+    - kubelet
+    - kube-proxy
+    - kube-apiserver
+    - kube-scheduler
+    - kube-controller-manager
